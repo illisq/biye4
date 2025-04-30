@@ -19,13 +19,13 @@ def jailbreak_mutate(template_text, question):
     3. Directly return the redesigned or newly created template without any explanation.
     """
 
-    log = f"[越狱变异] 输入提示词:\n{prompt}"
+    log = f"[jailbreak_mutate] input:\n{prompt}"
     
     mutated = call_assistant_llm(prompt)
     if mutated:
-        log += f"\n[越狱变异] 输出:\n{mutated}"
+        log += f"\n[jailbreak_mutate] output:\n{mutated}"
     else:
-        log += f"\n[越狱变异] 调用失败，使用原文"
+        log += f"\n[jailbreak_mutate] failed"
         mutated = template_text
     
     return mutated, log

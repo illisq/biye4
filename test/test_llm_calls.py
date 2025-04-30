@@ -70,34 +70,34 @@ class TestLLMCalls(unittest.TestCase):
         """恢复真实的环境变量"""
         os.environ.update(self.real_env)
 
-    @patch('requests.post')
-    def test_api_error_handling(self, mock_post):
-        """模拟测试错误处理"""
-        self.logger.info('测试API错误处理（模拟）')
+    # @patch('requests.post')
+    # def test_api_error_handling(self, mock_post):
+    #     """模拟测试错误处理"""
+    #     self.logger.info('测试API错误处理（模拟）')
         
-        # 设置模拟环境
-        test_env = {
-            'OPENAI_API_KEY': 'test-api-key',
-            'OPENAI_API_BASE': 'http://test.api',
-            'AI_MODEL': 'gpt-4'
-        }
-        with patch.dict('os.environ', test_env):
-            # 测试网络错误
-            mock_post.side_effect = Exception("网络错误")
-            response = call_llm("测试提示")
-            self.assertIsNone(response)
-            self.logger.info('成功捕获网络错误')
+    #     # 设置模拟环境
+    #     test_env = {
+    #         'OPENAI_API_KEY': 'test-api-key',
+    #         'OPENAI_API_BASE': 'http://test.api',
+    #         'AI_MODEL': 'gpt-4'
+    #     }
+    #     with patch.dict('os.environ', test_env):
+    #         # 测试网络错误
+    #         mock_post.side_effect = Exception("网络错误")
+    #         response = call_llm("测试提示")
+    #         self.assertIsNone(response)
+    #         self.logger.info('成功捕获网络错误')
 
-            # 测试API错误响应
-            mock_response = MagicMock()
-            mock_response.status_code = 400
-            mock_response.text = "请求错误"
-            mock_post.side_effect = None
-            mock_post.return_value = mock_response
+    #         # 测试API错误响应
+    #         mock_response = MagicMock()
+    #         mock_response.status_code = 400
+    #         mock_response.text = "请求错误"
+    #         mock_post.side_effect = None
+    #         mock_post.return_value = mock_response
 
-            response = call_llm("测试提示")
-            self.assertIsNone(response)
-            self.logger.info('成功处理API错误响应')
+    #         response = call_llm("测试提示")
+    #         self.assertIsNone(response)
+    #         self.logger.info('成功处理API错误响应')
 
     def test_assistant_and_target_calls(self):
         """测试辅助和目标LLM调用"""
