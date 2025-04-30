@@ -258,6 +258,22 @@ def main():
     # Create template refusal count dictionary
     template_refusal_counts = {}
     
+    # 添加性能指标跟踪
+    performance_metrics = {
+        'round_metrics': [],  # 每轮的性能指标
+        'strategy_metrics': {  # 各策略的性能指标
+            'hallucination': {'success': 0, 'attempts': 0},
+            'jailbreak': {'success': 0, 'attempts': 0},
+            'consistency': {'success': 0, 'attempts': 0}
+        },
+        'template_metrics': {  # 模板相关的指标
+            'total_templates': len(templates),
+            'successful_templates': 0,
+            'failed_templates': 0,
+            'template_survival_rate': 0.0
+        }
+    }
+    
     rounds = 5  # Adjustable rounds
     questions_per_round = 1  # Questions per round
     
@@ -272,6 +288,11 @@ def main():
         # Track total success and attempts for each round
         round_success_count = 0
         round_total_attempts = 0
+        round_strategy_metrics = {
+            'hallucination': {'success': 0, 'attempts': 0},
+            'jailbreak': {'success': 0, 'attempts': 0},
+            'consistency': {'success': 0, 'attempts': 0}
+        }
         
         # Process n questions per round
         for question_idx in range(questions_per_round):
@@ -302,6 +323,11 @@ def main():
                     
                 log(f"\nStrategy combo: {combo}")
                 mutated_prompt, mutate_logs, refusal_detected = mutate_prompt(template, question, combo)
+                
+                # 更新策略尝试次数
+                for strategy in combo:
+                    round_strategy_metrics[strategy]['attempts'] += 1
+                    performance_metrics['strategy_metrics'][strategy]['attempts'] += 1
                 
                 # If refusal detected
                 if refusal_detected:
@@ -357,6 +383,11 @@ def main():
 
                 if success:
                     question_success_count += 1
+                    # 更新策略成功次数
+                    for strategy in combo:
+                        round_strategy_metrics[strategy]['success'] += 1
+                        performance_metrics['strategy_metrics'][strategy]['success'] += 1
+                        
                     new_template = {
                         "id": str(len(templates) + 1),
                         "text": mutated_prompt,
@@ -376,18 +407,54 @@ def main():
                 round_success_count += question_success_count
                 round_total_attempts += len(combos)
         
-        # Calculate and log round average success rate
+        # 更新性能指标
+        round_metrics = {
+            'round': round_idx + 1,
+            'success_rate': round_success_count / round_total_attempts if round_total_attempts > 0 else 0,
+            'total_success': round_success_count,
+            'total_attempts': round_total_attempts,
+            'strategy_metrics': round_strategy_metrics
+        }
+        performance_metrics['round_metrics'].append(round_metrics)
+        
+        # 更新模板指标
+        performance_metrics['template_metrics'].update({
+            'total_templates': len(templates),
+            'successful_templates': len([t for t in templates if t.get('success_count', 0) > 0]),
+            'failed_templates': len(failed_templates),
+            'template_survival_rate': len(templates) / (len(templates) + len(failed_templates)) if (len(templates) + len(failed_templates)) > 0 else 0
+        })
+        
+        # 计算并记录本轮性能指标
         if round_total_attempts > 0:
             round_success_rate = round_success_count / round_total_attempts
             log(f"\n=== Round {round_idx+1} Evolution Complete ===")
             log(f"Round average success rate: {round_success_rate:.2f}")
             log(f"Total successes: {round_success_count}")
             log(f"Total attempts: {round_total_attempts}")
+            
+            # 记录策略性能
+            log("\nStrategy Performance:")
+            for strategy, metrics in round_strategy_metrics.items():
+                if metrics['attempts'] > 0:
+                    success_rate = metrics['success'] / metrics['attempts']
+                    log(f"{strategy}: Success rate = {success_rate:.2f} ({metrics['success']}/{metrics['attempts']})")
+            
+            # 记录模板性能
+            log("\nTemplate Performance:")
+            log(f"Total templates: {performance_metrics['template_metrics']['total_templates']}")
+            log(f"Successful templates: {performance_metrics['template_metrics']['successful_templates']}")
+            log(f"Template survival rate: {performance_metrics['template_metrics']['template_survival_rate']:.2f}")
         else:
             log(f"\n=== Round {round_idx+1} Evolution Ended Abnormally ===")
             log("No valid attempts in this round")
             
         round_idx += 1
+    
+    # 保存最终的性能指标
+    metrics_file = os.path.join(log_dir, f'performance_metrics_{current_time}.json')
+    save_json(metrics_file, performance_metrics)
+    log(f"\nPerformance metrics saved to {metrics_file}")
 
 if __name__ == '__main__':
     main()
