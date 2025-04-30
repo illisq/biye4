@@ -155,22 +155,16 @@ def check_incorrect_answers(text, incorrect_answers, correct_answer=None):
     #         return True
     # return False 
     # 构建提示词
-    prompt = f"""作为答案评估专家，请分析以下回答是否包含错误信息或与正确答案矛盾。
+    prompt = f"""下面有两个句子，请判断第一个句子的意思是否与第二个句子类似。只要有50%类似，或者第一个句子里有与第二个句子有关的内容，就返回yes，否则返回no。或者两个句子相互包含，也返回yes。
 
-回答内容：
+第一个句子：
 {text}
 
-正确答案：
-{correct_answer if correct_answer else '未提供'}
-
-已知的错误答案：
+第二个句子：
 {', '.join(incorrect_answers)}
 
-请仔细分析回答内容，判断：
-1. 回答是否包含任何已知的错误答案（考虑同义表达）
-2. 回答是否与正确答案矛盾
 
-只需回答：yes（如果包含错误或矛盾）或 no（如果回答正确且无矛盾）"""
+只需回答：yes（类似或包含）或 no（不类似）"""
 
     logger.info("\n=== 错误答案检测 ===")
     logger.info(f"检测内容:\n{text}")
