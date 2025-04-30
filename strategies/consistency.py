@@ -72,13 +72,13 @@ def word_level_mutate(text):
 
 def sentence_level_mutate(text, question):
     """句子级别变异：使用辅助LLM重写句子，保持意思不变"""
-    prompt = f"""这句话："{text}"
-还有什么表达方式？要求：
-1. 意思必须完全相同
-2. 措辞和结构要有变化
-3. 直接返回新的表达，不要解释
+    prompt = f"""For this sentence: "{text}"
+    What are some alternative ways to express it? Requirements:
+    1. The meaning must remain exactly the same.
+    2. The wording and structure should be different.
+    3. Directly return the new expression without any explanation.
 
-问题背景（帮助你理解上下文）：{question['question']}"""
+    Context of the question (to help you understand the background): {question['question']}"""
 
     mutated = call_assistant_llm(prompt)
     return mutated if mutated else text
