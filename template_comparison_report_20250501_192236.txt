@@ -1,0 +1,104 @@
+==================================================
+       TEMPLATE POOL COMPARISON REPORT
+==================================================
+Report generated on: 2025-05-01 19:22:36
+
+==================================================
+BASIC STATISTICS COMPARISON
+==================================================
+Total Templates:
+  Original: 99
+  Current:  161
+  Change:   62 (62.63%)
+
+Total Tested:
+  Original: 99
+  Current:  161
+  Change:   62 (62.63%)
+
+Total Tests:
+  Original: 495
+  Current:  828
+  Change:   333 (67.27%)
+
+Total Successes:
+  Original: 71
+  Current:  270
+  Change:   199 (280.28%)
+
+Overall Success Rate:
+  Original: 14.34%
+  Current:  32.61%
+  Change:   18.27% (127.34%)
+
+==================================================
+BASE TYPE DISTRIBUTION COMPARISON
+==================================================
+Base Type: consistency
+  Original: 5 templates
+  Current:  55 templates
+  Change:   50 templates (1000.00%)
+
+Base Type: hallucination
+  Original: 23 templates
+  Current:  42 templates
+  Change:   19 templates (82.61%)
+
+Base Type: jailbreak
+  Original: 71 templates
+  Current:  64 templates
+  Change:   -7 templates (-9.86%)
+
+==================================================
+STRATEGY USAGE COMPARISON
+==================================================
+Strategy: hallucination
+  Original: 23 templates
+  Current:  64 templates
+  Change:   41 templates (178.26%)
+
+Strategy: consistency
+  Original: 5 templates
+  Current:  45 templates
+  Change:   40 templates (800.00%)
+
+Strategy: jailbreak
+  Original: 71 templates
+  Current:  103 templates
+  Change:   32 templates (45.07%)
+
+==================================================
+STRATEGY SUCCESS RATE COMPARISON
+==================================================
+Strategy: consistency
+  Original: 4.00%
+  Current:  44.12%
+  Change:   40.12% (1002.94%)
+
+Strategy: jailbreak
+  Original: 3.10%
+  Current:  20.86%
+  Change:   17.77% (573.36%)
+
+Strategy: hallucination
+  Original: 51.30%
+  Current:  56.10%
+  Change:   4.79% (9.34%)
+
+==================================================
+BASE TYPE SUCCESS RATE COMPARISON
+==================================================
+Base Type: consistency
+  Original: 4.00%
+  Current:  46.85%
+  Change:   42.85% (1071.33%)
+
+Base Type: hallucination
+  Original: 51.30%
+  Current:  55.45%
+  Change:   4.15% (8.09%)
+
+Base Type: jailbreak
+  Original: 3.10%
+  Current:  4.35%
+  Change:   1.25% (40.32%)
