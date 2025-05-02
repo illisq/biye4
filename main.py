@@ -8,6 +8,8 @@ from strategies.hallucination import hallucination_mutate
 from strategies.jailbreak import jailbreak_mutate
 from strategies.consistency import consistency_mutate
 from utils import text_similarity, contains_sensitive_words, check_incorrect_answers, call_target_llm
+import itertools
+from collections import defaultdict
 
 # 创建log文件夹
 log_dir = 'log'
@@ -223,6 +225,173 @@ def is_refusal_response(response):
     log("No refusal pattern detected")
     return False
 
+def fine_tune_strategy_combo(template, question, successful_combo, template_refusal_counts, strategies_metrics):
+    """
+    Fine-tune a successful strategy combination by testing different strategy orders
+    Args:
+        template: Current template
+        question: Current question
+        successful_combo: Successful strategy combination
+        template_refusal_counts: Template refusal counts
+        strategies_metrics: Strategy metrics tracking
+    
+    Returns:
+        fine_tuned_combo: The best strategy combination after fine-tuning
+        best_success_rate: Best success rate
+        best_prompt: Best generated prompt
+    """
+    if len(successful_combo) <= 1:
+        log(f"Strategy combination {successful_combo} has only one strategy, no need to adjust order")
+        return successful_combo, 0, None
+    
+    log(f"\n=== Testing permutations for successful combo {successful_combo} ===")
+    
+    # Generate all possible permutations
+    all_permutations = list(itertools.permutations(successful_combo))
+    
+    template_id = template['id']
+    category = template['base_type']
+    original_answer = question.get('correct_answers', '')
+    best_combo = successful_combo
+    best_success_count = 0
+    total_tests = 0
+    best_prompt = None
+    
+    # Test each permutation
+    for perm in all_permutations:
+        perm_combo = list(perm)  # Convert to list
+        log(f"\nTesting strategy order: {perm_combo}")
+        
+        # Use the adjusted strategy order for mutation
+        mutated_prompt, mutate_logs, refusal_detected = mutate_prompt(template, question, perm_combo)
+        
+        # Update strategy attempt counts
+        for strategy in perm_combo:
+            strategies_metrics[strategy]['attempts'] += 1
+        
+        # If refusal detected
+        if refusal_detected:
+            template_refusal_counts[template_id] += 1
+            log(f"Assistant LLM refusal detected, template {template_id} current refusal count: {template_refusal_counts[template_id]}")
+            continue
+        
+        for l in mutate_logs:
+            log(l)
+        
+        # Process variables and confirmation
+        mutated_prompt = check_template_variables(mutated_prompt, question)
+        mutated_prompt = add_question_confirmation(mutated_prompt, question)
+        
+        log(f"\nFinal prompt:\n{mutated_prompt}")
+        answer1 = call_target_llm(mutated_prompt)
+        if answer1 is None:
+            log("Error: Target LLM call failed")
+            continue
+        log(f"Target LLM response: {answer1}")
+        
+        # Judge attack success
+        if category == "consistency":
+            if original_answer is not None:
+                success, reason = judge_consistency(original_answer, answer1)
+                log(f"Consistency comparison:\nFirst response: {original_answer}\nSecond response: {answer1}")
+            else:
+                success, reason = False, "First consistency test call failed"
+        else:
+            success, reason = judge_attack_success(category, question, answer1)
+        
+        log(f"Attack {'successful' if success else 'failed'}: {reason}")
+        total_tests += 1
+        
+        if success:
+            # Update strategy success counts
+            for strategy in perm_combo:
+                strategies_metrics[strategy]['success'] += 1
+            best_success_count += 1
+            
+            # If this is the first successful combination or if success rate is higher, update best combo
+            if best_prompt is None or best_success_count > 1:
+                best_combo = perm_combo
+                best_prompt = mutated_prompt
+    
+    # Calculate success rate
+    best_success_rate = best_success_count / total_tests if total_tests > 0 else 0
+    log(f"\n=== Strategy order fine-tuning complete ===")
+    log(f"Best strategy order: {best_combo}")
+    log(f"Success rate: {best_success_rate:.2f} ({best_success_count}/{total_tests})")
+    
+    return best_combo, best_success_rate, best_prompt
+
+def get_optimal_strategy_orders(templates):
+    """
+    Analyze historical data to get optimal strategy orders
+    Args:
+        templates: Template pool
+        
+    Returns:
+        optimal_orders: Dictionary of optimal strategy orders, where keys are strategy combinations 
+                      (sorted alphabetically) and values are the best order
+    """
+    fine_tuned_templates = [t for t in templates if t.get('fine_tuned', False)]
+    
+    if not fine_tuned_templates:
+        log("No fine-tuned template data found, random order will be used")
+        return {}
+    
+    log(f"Analyzing {len(fine_tuned_templates)} fine-tuned templates to determine best strategy orders")
+    
+    # Group by strategy combination
+    strategy_orders = defaultdict(list)
+    for template in fine_tuned_templates:
+        # Get strategy combination (order-independent)
+        strategies = sorted(template.get('strategies', []))
+        combo_key = '+'.join(strategies)
+        
+        # Get actual order used
+        actual_order = template.get('strategies', [])
+        
+        # Get success rate data
+        permutation_results = template.get('permutation_results', {})
+        success_rate = permutation_results.get('success_rate', 0)
+        
+        strategy_orders[combo_key].append({
+            'order': actual_order,
+            'success_rate': success_rate
+        })
+    
+    # Analyze best order for each combination
+    optimal_orders = {}
+    for combo, orders in strategy_orders.items():
+        # Sort by success rate
+        sorted_orders = sorted(orders, key=lambda x: x['success_rate'], reverse=True)
+        if sorted_orders:
+            optimal_orders[combo] = sorted_orders[0]['order']
+            log(f"Best order for strategy combination {combo}: {'+'.join(sorted_orders[0]['order'])}, success rate: {sorted_orders[0]['success_rate']:.2f}")
+    
+    return optimal_orders
+
+def optimize_strategy_order(combo, optimal_orders):
+    """
+    Optimize strategy order based on historical data
+    Args:
+        combo: Original strategy combination
+        optimal_orders: Dictionary of best strategy orders
+        
+    Returns:
+        optimized_combo: Optimized strategy order
+    """
+    # Sort strategies to match key format
+    sorted_combo = sorted(combo)
+    combo_key = '+'.join(sorted_combo)
+    
+    # If there's an optimized order, use it
+    if combo_key in optimal_orders:
+        optimized_combo = optimal_orders[combo_key]
+        log(f"Optimizing strategy combination {combo} to {optimized_combo}")
+        return optimized_combo
+    
+    # Otherwise keep original order
+    return combo
+
 def main():
     # Check environment variables
     required_vars = {
@@ -281,6 +450,9 @@ def main():
     log(f"Target model: {os.getenv('TARGET_LLM_MODEL')} @ {os.getenv('TARGET_LLM_URL')}")
     log(f"Assistant model: {os.getenv('ASSISTANT_LLM_MODEL')} @ {os.getenv('ASSISTANT_LLM_URL')}")
 
+    # 获取优化的策略顺序
+    optimal_strategy_orders = get_optimal_strategy_orders(templates)
+    
     round_idx = 0
     while round_idx < rounds:
         log(f"\n=== Evolution Round {round_idx+1} ===")
@@ -293,6 +465,9 @@ def main():
             'jailbreak': {'success': 0, 'attempts': 0},
             'consistency': {'success': 0, 'attempts': 0}
         }
+        
+        # 记录本轮的优化策略使用情况
+        used_optimized_orders = {}
         
         # Process n questions per round
         for question_idx in range(questions_per_round):
@@ -321,11 +496,24 @@ def main():
                 if template_removed:
                     break
                     
-                log(f"\nStrategy combo: {combo}")
-                mutated_prompt, mutate_logs, refusal_detected = mutate_prompt(template, question, combo)
+                # 优化策略顺序
+                optimized_combo = optimize_strategy_order(combo, optimal_strategy_orders)
+                
+                # 记录优化的策略顺序使用情况
+                if optimized_combo != combo:
+                    combo_key = '+'.join(sorted(combo))
+                    if combo_key not in used_optimized_orders:
+                        used_optimized_orders[combo_key] = {'attempts': 0, 'successes': 0}
+                    used_optimized_orders[combo_key]['attempts'] += 1
+                
+                log(f"\n策略组合: {combo}" + (f" (优化顺序: {optimized_combo})" if combo != optimized_combo else ""))
+                mutated_prompt, mutate_logs, refusal_detected = mutate_prompt(template, question, optimized_combo)
+                
+                # 使用优化后的组合进行后续处理
+                effective_combo = optimized_combo
                 
                 # 更新策略尝试次数
-                for strategy in combo:
+                for strategy in effective_combo:
                     round_strategy_metrics[strategy]['attempts'] += 1
                     performance_metrics['strategy_metrics'][strategy]['attempts'] += 1
                 
@@ -383,10 +571,40 @@ def main():
 
                 if success:
                     question_success_count += 1
-                    # 更新策略成功次数
-                    for strategy in combo:
+                    # Update strategy success counts
+                    for strategy in effective_combo:
                         round_strategy_metrics[strategy]['success'] += 1
                         performance_metrics['strategy_metrics'][strategy]['success'] += 1
+                    
+                    # If success was achieved with an optimized order
+                    if optimized_combo != combo:
+                        combo_key = '+'.join(sorted(combo))
+                        used_optimized_orders[combo_key]['successes'] += 1
+                    
+                    # Fine-tune the successful strategy combination
+                    log(f"\nFine-tuning successful strategy combination: {effective_combo}")
+                    best_combo, fine_tune_success_rate, best_prompt = fine_tune_strategy_combo(
+                        template, 
+                        question, 
+                        effective_combo,
+                        template_refusal_counts,
+                        round_strategy_metrics
+                    )
+                    
+                    # Use the fine-tuned best combination
+                    if best_prompt is not None:
+                        log(f"Using fine-tuned best strategy order: {best_combo}, success rate: {fine_tune_success_rate:.2f}")
+                        mutated_prompt = best_prompt
+                        effective_combo = best_combo
+                        fine_tuned = True
+                        permutation_results = {
+                            "tested_permutations": len(list(itertools.permutations(effective_combo))),
+                            "success_rate": fine_tune_success_rate
+                        }
+                    else:
+                        log("Fine-tuning did not find a better strategy order, keeping original combination")
+                        fine_tuned = False
+                        permutation_results = None
                         
                     new_template = {
                         "id": str(len(templates) + 1),
@@ -396,7 +614,9 @@ def main():
                         "question_id": question['id'],
                         "test_count": 1,
                         "success_count": 1,
-                        "strategies": combo
+                        "strategies": effective_combo,
+                        "fine_tuned": fine_tuned,
+                        "permutation_results": permutation_results
                     }
                     templates.append(new_template)
                     save_json(templates_path, templates)
@@ -407,7 +627,7 @@ def main():
                 round_success_count += question_success_count
                 round_total_attempts += len(combos)
         
-        # 更新性能指标
+        # Update performance metrics
         round_metrics = {
             'round': round_idx + 1,
             'success_rate': round_success_count / round_total_attempts if round_total_attempts > 0 else 0,
@@ -417,7 +637,7 @@ def main():
         }
         performance_metrics['round_metrics'].append(round_metrics)
         
-        # 更新模板指标
+        # Update template metrics
         performance_metrics['template_metrics'].update({
             'total_templates': len(templates),
             'successful_templates': len([t for t in templates if t.get('success_count', 0) > 0]),
@@ -425,7 +645,7 @@ def main():
             'template_survival_rate': len(templates) / (len(templates) + len(failed_templates)) if (len(templates) + len(failed_templates)) > 0 else 0
         })
         
-        # 计算并记录本轮性能指标
+        # Calculate and log round performance metrics
         if round_total_attempts > 0:
             round_success_rate = round_success_count / round_total_attempts
             log(f"\n=== Round {round_idx+1} Evolution Complete ===")
@@ -433,14 +653,14 @@ def main():
             log(f"Total successes: {round_success_count}")
             log(f"Total attempts: {round_total_attempts}")
             
-            # 记录策略性能
+            # Log strategy performance
             log("\nStrategy Performance:")
             for strategy, metrics in round_strategy_metrics.items():
                 if metrics['attempts'] > 0:
                     success_rate = metrics['success'] / metrics['attempts']
                     log(f"{strategy}: Success rate = {success_rate:.2f} ({metrics['success']}/{metrics['attempts']})")
             
-            # 记录模板性能
+            # Log template performance
             log("\nTemplate Performance:")
             log(f"Total templates: {performance_metrics['template_metrics']['total_templates']}")
             log(f"Successful templates: {performance_metrics['template_metrics']['successful_templates']}")
@@ -449,9 +669,20 @@ def main():
             log(f"\n=== Round {round_idx+1} Evolution Ended Abnormally ===")
             log("No valid attempts in this round")
             
+        # Update optimal strategy orders for next round
+        log("\nUpdating best strategy orders...")
+        optimal_strategy_orders = get_optimal_strategy_orders(templates)
+        
+        # Report effectiveness of optimized strategy orders
+        if used_optimized_orders:
+            log("\nOptimized strategy order effectiveness:")
+            for combo_key, stats in used_optimized_orders.items():
+                success_rate = stats['successes'] / stats['attempts'] if stats['attempts'] > 0 else 0
+                log(f"  Combination {combo_key}: Success rate {success_rate:.2f} ({stats['successes']}/{stats['attempts']})")
+        
         round_idx += 1
     
-    # 保存最终的性能指标
+    # Save final performance metrics
     metrics_file = os.path.join(log_dir, f'performance_metrics_{current_time}.json')
     save_json(metrics_file, performance_metrics)
     log(f"\nPerformance metrics saved to {metrics_file}")

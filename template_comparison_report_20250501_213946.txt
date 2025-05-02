@@ -1,43 +1,43 @@
 ==================================================
        TEMPLATE POOL COMPARISON REPORT
 ==================================================
-Report generated on: 2025-05-01 19:22:36
+Report generated on: 2025-05-01 21:39:46
 
 ==================================================
 BASIC STATISTICS COMPARISON
 ==================================================
 Total Templates:
   Original: 99
-  Current:  161
-  Change:   62 (62.63%)
+  Current:  166
+  Change:   67 (67.68%)
 
 Total Tested:
   Original: 99
-  Current:  161
-  Change:   62 (62.63%)
+  Current:  166
+  Change:   67 (67.68%)
 
 Total Tests:
   Original: 495
-  Current:  828
-  Change:   333 (67.27%)
+  Current:  833
+  Change:   338 (68.28%)
 
 Total Successes:
   Original: 71
-  Current:  270
-  Change:   199 (280.28%)
+  Current:  277
+  Change:   206 (290.14%)
 
 Overall Success Rate:
   Original: 14.34%
-  Current:  32.61%
-  Change:   18.27% (127.34%)
+  Current:  33.25%
+  Change:   18.91% (131.84%)
 
 ==================================================
 BASE TYPE DISTRIBUTION COMPARISON
 ==================================================
 Base Type: consistency
   Original: 5 templates
-  Current:  55 templates
-  Change:   50 templates (1000.00%)
+  Current:  53 templates
+  Change:   48 templates (960.00%)
 
 Base Type: hallucination
   Original: 23 templates
@@ -46,59 +46,59 @@ Base Type: hallucination
 
 Base Type: jailbreak
   Original: 71 templates
-  Current:  64 templates
-  Change:   -7 templates (-9.86%)
+  Current:  71 templates
+  Change:   0 templates (0.00%)
 
 ==================================================
 STRATEGY USAGE COMPARISON
 ==================================================
 Strategy: hallucination
   Original: 23 templates
-  Current:  64 templates
-  Change:   41 templates (178.26%)
+  Current:  67 templates
+  Change:   44 templates (191.30%)
 
 Strategy: consistency
   Original: 5 templates
-  Current:  45 templates
-  Change:   40 templates (800.00%)
+  Current:  47 templates
+  Change:   42 templates (840.00%)
 
 Strategy: jailbreak
   Original: 71 templates
-  Current:  103 templates
-  Change:   32 templates (45.07%)
+  Current:  106 templates
+  Change:   35 templates (49.30%)
 
 ==================================================
 STRATEGY SUCCESS RATE COMPARISON
 ==================================================
 Strategy: consistency
   Original: 4.00%
-  Current:  44.12%
-  Change:   40.12% (1002.94%)
+  Current:  44.58%
+  Change:   40.58% (1014.58%)
 
 Strategy: jailbreak
   Original: 3.10%
-  Current:  20.86%
-  Change:   17.77% (573.36%)
+  Current:  21.68%
+  Change:   18.58% (599.75%)
 
 Strategy: hallucination
   Original: 51.30%
-  Current:  56.10%
-  Change:   4.79% (9.34%)
+  Current:  56.50%
+  Change:   5.19% (10.12%)
 
 ==================================================
 BASE TYPE SUCCESS RATE COMPARISON
 ==================================================
 Base Type: consistency
   Original: 4.00%
-  Current:  46.85%
-  Change:   42.85% (1071.33%)
+  Current:  46.76%
+  Change:   42.76% (1069.06%)
 
 Base Type: hallucination
   Original: 51.30%
-  Current:  55.45%
-  Change:   4.15% (8.09%)
+  Current:  58.45%
+  Change:   7.15% (13.94%)
 
 Base Type: jailbreak
   Original: 3.10%
-  Current:  4.35%
-  Change:   1.25% (40.32%)
+  Current:  7.47%
+  Change:   4.37% (141.12%)

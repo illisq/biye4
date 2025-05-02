@@ -1,0 +1,10 @@
+==================================================
+       TRIPLE STRATEGY COMBINATION REPORT
+==================================================
+Report generated on: 2025-05-01 21:39:53
+
+Rank 1: Triple Combination: consistency+hallucination+jailbreak
+  Success Rate: 46.55%
+  Templates: 11
+  Total Tests: 58
+  Successful Tests: 27
